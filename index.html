@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1C4FA0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rotam">
+<title>Direksiyon Rotam</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F5; --surface:#FFFFFF; --surface-2:#F5F7FA; --ink:#14213A; --muted:#5A6780; --line:#D5DCE7;
+  --accent:#1C4FA0; --accent-ink:#FFFFFF; --accent-soft:#E0E9F8;
+  --warn:#A36F00; --warn-soft:#FFF1CC; --danger:#C0302A; --danger-soft:#FBE2E0; --ok:#1B7F46; --ok-soft:#DBF2E3;
+  --park:#7447C9; --park-soft:#EEE6FB;
+  --tile-filter:none; --shadow:0 6px 24px rgba(20,33,58,.14);
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1320; --surface:#161F30; --surface-2:#1C273B; --ink:#E7ECF4; --muted:#96A3BA; --line:#29354C;
+    --accent:#6B9BEB; --accent-ink:#0D1320; --accent-soft:#1F3152;
+    --warn:#F0B532; --warn-soft:#3A2F12; --danger:#F06A61; --danger-soft:#3E1F1E; --ok:#47C47B; --ok-soft:#173726;
+    --park:#A889EE; --park-soft:#2C2447;
+    --tile-filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.55); --shadow:0 6px 24px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1320; --surface:#161F30; --surface-2:#1C273B; --ink:#E7ECF4; --muted:#96A3BA; --line:#29354C;
+  --accent:#6B9BEB; --accent-ink:#0D1320; --accent-soft:#1F3152;
+  --warn:#F0B532; --warn-soft:#3A2F12; --danger:#F06A61; --danger-soft:#3E1F1E; --ok:#47C47B; --ok-soft:#173726;
+  --park:#A889EE; --park-soft:#2C2447;
+  --tile-filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.55); --shadow:0 6px 24px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+#app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+header.top{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;min-width:0;white-space:nowrap;font:700 21px/1 var(--display);letter-spacing:.03em;text-transform:uppercase}
+.plate{display:grid;place-items:center;width:28px;height:28px;background:var(--accent);color:var(--accent-ink);border-radius:6px;font:700 19px/1 var(--display);border:2px solid var(--surface);box-shadow:0 0 0 2px var(--accent)}
+.recflag{margin-left:auto;display:none;align-items:center;gap:6px;font:600 14px var(--body);color:var(--danger);background:var(--danger-soft);border:0;border-radius:999px;padding:5px 11px}
+.recflag.on{display:flex}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--danger);animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+
+main{flex:1;min-height:0;position:relative;overflow:hidden}
+.view{display:none;height:100%;overflow:auto}
+.view.on{display:block}
+.pad{padding:16px;padding-block:16px 28px;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+nav.tabs{display:flex;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px 8px;border:0;background:none;color:var(--muted);font:600 13px var(--body)}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button.on{color:var(--accent)}
+
+h1,h2,h3{margin:0;font-family:var(--display);text-wrap:balance;letter-spacing:.01em}
+h2{font-size:24px;line-height:1.1}
+h3{font-size:19px;line-height:1.15}
+.eyebrow{font:600 12px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:9px 6px;display:flex;flex-direction:column;align-items:center;gap:1px;font-weight:600;line-height:1.15}
+.seg button small{font-weight:500;font-size:12px;color:var(--muted)}
+.seg button.on{background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.12);color:var(--accent)}
+.seg button.on small{color:var(--ink)}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:10px 14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > .grow{flex:1}
+
+.bigstart{width:100%;min-height:92px;border:0;border-radius:18px;background:var(--accent);color:var(--accent-ink);font:700 34px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:14px;box-shadow:var(--shadow)}
+.bigstart svg{width:34px;height:34px}
+
+.tips{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.tips li{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:15px}
+.tips li b.n{font:700 15px var(--display);color:var(--accent)}
+
+.banner{background:var(--warn-soft);border:1px solid var(--warn);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+
+/* recording */
+.recwrap{display:flex;flex-direction:column;height:100%}
+.recmap{flex:1;min-height:180px}
+.recpanel{background:var(--surface);border-top:1px solid var(--line);padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gauge{display:flex;flex-direction:column}
+.gauge .v{font:700 30px/1 var(--display)}
+.gauge .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.statusline{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:4px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.chip.ok{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.chip.bad{background:var(--danger-soft);border-color:transparent;color:var(--danger)}
+.chip.warn{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+.chip.park{background:var(--park-soft);border-color:transparent;color:var(--park)}
+.chip.acc{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+
+.hold{position:relative;overflow:hidden}
+.hold .fill{position:absolute;inset:0;background:rgba(255,255,255,.25);transform:scaleX(0);transform-origin:left}
+.hold.danger .fill{background:var(--danger-soft)}
+.hold.holding .fill{transform:scaleX(1);transition:transform var(--hold,1.2s) linear}
+.hold span{position:relative}
+
+/* pocket */
+#pocket{position:fixed;inset:0;background:#000;color:#5b5b5b;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;touch-action:none;user-select:none;-webkit-user-select:none;padding:24px}
+#pocket .pt{font:600 20px var(--display);letter-spacing:.05em;text-transform:uppercase;text-align:center}
+#pocket .ring{width:120px;height:120px;border-radius:50%;border:3px solid #2a2a2a;display:grid;place-items:center;font-size:13px;text-align:center;padding:12px;position:relative}
+#pocket .ring svg{position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);transform:rotate(-90deg)}
+#pocket .ring circle{fill:none;stroke:#3d6fc2;stroke-width:4;stroke-dasharray:377;stroke-dashoffset:377}
+#pocket .ring.holding circle{stroke-dashoffset:0;transition:stroke-dashoffset 2s linear}
+#pocket .pd{position:absolute;top:calc(env(safe-area-inset-top,0px) + 20px);display:flex;gap:8px;align-items:center;color:#7a2020;font-size:14px}
+
+/* lessons list */
+.lesson{display:grid;grid-template-columns:1fr auto;gap:4px 10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;text-align:left;width:100%}
+.lesson .nm{font:700 20px/1.1 var(--display)}
+.lesson .meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lesson .go{align-self:center;color:var(--muted)}
+.empty{border:1.5px dashed var(--line);border-radius:14px;padding:20px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:12px;align-items:center}
+
+/* lesson view */
+#v-lesson.on{display:flex;flex-direction:column;overflow:hidden}
+.lhead{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--line)}
+.lhead input{flex:1;min-width:0;border:1px solid transparent;background:transparent;border-radius:8px;padding:6px 8px;font:700 21px var(--display)}
+.lhead input:focus{border-color:var(--line);background:var(--surface-2);outline:none}
+.iconbtn{width:42px;height:42px;border-radius:10px;border:0;background:none;display:grid;place-items:center;color:var(--ink);flex:none}
+.iconbtn svg{width:22px;height:22px}
+.lmapwrap{position:relative;flex:0 0 42%;min-height:200px}
+#lmap{position:absolute;inset:0}
+.maptools{position:absolute;right:10px;top:10px;z-index:500;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.maptools .seg2{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.maptools .seg2 button{border:0;background:none;padding:7px 10px;font-size:13px;font-weight:600;color:var(--muted)}
+.maptools .seg2 button.on{background:var(--accent);color:var(--accent-ink)}
+.legend{position:absolute;left:10px;bottom:10px;z-index:500;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 9px;font-size:12px;display:flex;gap:9px;flex-wrap:wrap;max-width:calc(100% - 20px);box-shadow:var(--shadow)}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.subtabs{display:flex;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
+.subtabs button{flex:1;border:0;background:none;padding:11px 8px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.subtabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.lpanel{flex:1;overflow:auto;min-height:0}
+.lpanel .pad{gap:14px}
+
+.split{display:flex;flex-direction:column;gap:6px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.step{display:grid;grid-template-columns:40px 1fr;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);align-items:start;cursor:pointer;border-radius:8px}
+.step:hover{background:var(--surface-2)}
+.step .ic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font:700 15px var(--display)}
+.step .ic svg{width:22px;height:22px}
+.step.stop .ic{background:var(--warn-soft);color:var(--warn)}
+.step.park .ic{background:var(--park-soft);color:var(--park)}
+.step.note .ic{background:var(--ok-soft);color:var(--ok)}
+.step.harsh .ic{background:var(--danger-soft);color:var(--danger)}
+.step .t{font-weight:600;line-height:1.3}
+.step .s{font-size:14px;color:var(--muted)}
+.step .n{font:700 13px var(--display);color:var(--muted);margin-right:4px}
+
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.tile .v{font:700 26px/1.05 var(--display)}
+.tile .v small{font-size:15px;color:var(--muted);margin-left:2px}
+.tile .l{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+@media (max-width:380px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:15px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+canvas.chart{width:100%;height:170px;display:block}
+.tablewrap{overflow-x:auto}
+table.prog{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+table.prog th,table.prog td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.prog th:first-child,table.prog td:first-child{text-align:left}
+table.prog th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+table.prog tr.cur td{background:var(--accent-soft)}
+
+.rp-controls{display:flex;gap:8px;align-items:center}
+.rp-info{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.nextturn{background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:12px 14px;font:700 22px/1.15 var(--display);display:flex;gap:10px;align-items:center}
+.nextturn svg{width:30px;height:30px;flex:none}
+
+.qopts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qopt{min-height:64px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);font:700 19px var(--display);display:flex;align-items:center;justify-content:center;gap:8px}
+.qopt svg{width:26px;height:26px}
+.qopt.right{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+.qopt.wrong{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
+.qbar{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden}
+.qbar i{display:block;height:100%;background:var(--accent)}
+.feedback{border-radius:12px;padding:12px 14px;font-weight:600}
+.feedback.ok{background:var(--ok-soft);color:var(--ok)}
+.feedback.no{background:var(--danger-soft);color:var(--danger)}
+
+.cmp-item{display:grid;grid-template-columns:auto 14px 1fr auto;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line)}
+.cmp-item .sw{width:14px;height:14px;border-radius:4px}
+.cmp-item label.ref{font-size:13px;color:var(--muted);display:flex;gap:4px;align-items:center;white-space:nowrap}
+#cmap{height:48vh;min-height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+
+/* sheet */
+#sheet{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;justify-content:flex-end;background:rgba(10,16,28,.45)}
+#sheet .box{background:var(--surface);border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;max-width:640px;width:100%;margin:0 auto;box-shadow:var(--shadow)}
+#sheet textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface-2);resize:vertical}
+
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:15px;font-weight:500;z-index:3000;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+
+/* map bits */
+.leaflet-container{background:var(--surface-2);font-family:var(--body)}
+.leaflet-tile-pane{filter:var(--tile-filter)}
+.mk{display:grid;place-items:center;border-radius:50%;font:700 12px/1 var(--display);color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mk.turn{background:#1C4FA0}
+.mk.stop{background:#C98A00;border-radius:5px}
+.mk.harsh{background:#C0302A;border-radius:4px;transform:rotate(45deg)}
+.mk.harsh b{transform:rotate(-45deg)}
+.mk.note{background:#1B7F46}
+.mk.se{background:#14213A;font-size:11px}
+.mk.split{background:#7447C9;border-radius:5px}
+.mk.me{background:#1C4FA0;box-shadow:0 0 0 6px rgba(28,79,160,.25)}
+.leaflet-control-attribution{font-size:10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand"><span class="plate">D</span>Direksiyon Rotam</div>
+    <button class="recflag" id="recflag" type="button"><span class="dot"></span><span id="recflagT">Kayıt</span></button>
+  </header>
+
+  <main>
+    <!-- ============ KAYIT ============ -->
+    <section class="view on" id="v-record">
+      <div class="pad" id="rec-idle">
+        <div id="resumeBox"></div>
+        <div id="secureWarn"></div>
+        <div class="card">
+          <div>
+            <div class="eyebrow">Yeni ders kaydı</div>
+            <h2>Bugünkü tur hangisi?</h2>
+          </div>
+          <div class="seg" id="typeSeg" role="radiogroup">
+            <button type="button" data-t="uzun" class="on" role="radio"><span>Uzun tur</span><small>önce park</small></button>
+            <button type="button" data-t="kisa" role="radio"><span>Kısa tur</span><small>park en sonda</small></button>
+            <button type="button" data-t="serbest" role="radio"><span>Serbest</span><small>ayrım yok</small></button>
+          </div>
+          <button class="bigstart" id="btnStart" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>Başlat
+          </button>
+          <p class="small muted" id="gpsPre">Başlat'a basınca konum izni istenecek. "İzin ver" de.</p>
+        </div>
+
+        <div class="card">
+          <h3>Derse çıkmadan önce</h3>
+          <ul class="tips">
+            <li><b class="n">1</b><span>Şarjı doldur. Kayıt boyunca ekran açık kalır, pil normalden hızlı biter.</span></li>
+            <li><b class="n">2</b><span>Ekran kapanırsa kayıt durur. Uygulama ekranı açık tutmaya çalışır; garanti olsun diye ders boyunca otomatik kilidi kapat. <b>iPhone:</b> Ayarlar › Ekran ve Parlaklık › Otomatik Kilit › Asla. <b>Android:</b> Ayarlar › Ekran › Ekran zaman aşımı › en uzun süre.</span></li>
+            <li><b class="n">3</b><span>Araca binince Başlat'a bas, sonra <b>Cep modu</b>'na geç ve telefonu cebine koy. Ekran kararır, dokunuşlar kilitlenir, kayıt sürer.</span></li>
+            <li><b class="n">4</b><span>Sürerken telefona dokunma. Ders bitince cep modundan çık ve Bitir'e basılı tut.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="recwrap" id="rec-live" hidden>
+        <div class="recmap" id="rmap"></div>
+        <div class="recpanel">
+          <div class="gauges">
+            <div class="gauge"><span class="v num" id="gTime">0:00</span><span class="l">Süre</span></div>
+            <div class="gauge"><span class="v num" id="gDist">0,00</span><span class="l">km</span></div>
+            <div class="gauge"><span class="v num" id="gSpd">0</span><span class="l">km/sa</span></div>
+          </div>
+          <div class="statusline">
+            <span class="chip" id="cGps">GPS bekleniyor…</span>
+            <span class="chip" id="cWake">Ekran</span>
+            <span class="chip" id="cPhase"></span>
+          </div>
+          <button class="btn" id="btnPhase" type="button"></button>
+          <div class="row">
+            <button class="btn primary grow" id="btnPocket" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/></svg>Cep modu
+            </button>
+            <button class="btn danger hold grow" id="btnStop" type="button" style="--hold:1.2s"><span class="fill"></span><span>Bitir (basılı tut)</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DERSLER ============ -->
+    <section class="view" id="v-list">
+      <div class="pad">
+        <div class="row">
+          <div class="grow"><div class="eyebrow">Kayıtlı dersler</div><h2>Derslerim</h2></div>
+        </div>
+        <div id="lessonList" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div class="card">
+          <h3>Yedekle ve taşı</h3>
+          <p class="small muted">Dersler bu telefonun tarayıcısında saklanır. Diğer telefona geçirmek ya da yedeklemek için dosyaya aktar, orada içe aktar.</p>
+          <div class="row">
+            <button class="btn grow" id="btnExport" type="button">Tümünü dışa aktar</button>
+            <label class="btn grow" for="fileImport">İçe aktar (.json / .gpx)</label>
+            <input type="file" id="fileImport" accept=".json,.gpx,application/json,application/gpx+xml,text/xml" hidden>
+          </div>
+          <button class="btn ghost" id="btnSample" type="button">Örnek ders ekle (denemek için, sanal rota)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DERS ============ -->
+    <section class="view" id="v-lesson">
+      <div class="lhead">
+        <button class="iconbtn" id="btnBack" type="button" aria-label="Geri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <input id="lname" aria-label="Ders adı">
+        <button class="iconbtn" id="btnMore" type="button" aria-label="Diğer"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+      </div>
+      <div class="lmapwrap">
+        <div id="lmap"></div>
+        <div class="maptools" id="mapTools">
+          <div class="seg2"><button type="button" data-m="hiz" class="on">Hız</button><button type="button" data-m="bolum">Bölüm</button></div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="subtabs" id="subtabs">
+        <button type="button" data-p="tarif" class="on">Tarif</button>
+        <button type="button" data-p="oynat">İzle</button>
+        <button type="button" data-p="test">Test</button>
+        <button type="button" data-p="stat">İstatistik</button>
+      </div>
+      <div class="lpanel" id="lpanel">
+        <div class="pad" id="p-tarif"></div>
+        <div class="pad" id="p-oynat" hidden></div>
+        <div class="pad" id="p-test" hidden></div>
+        <div class="pad" id="p-stat" hidden></div>
+      </div>
+    </section>
+
+    <!-- ============ KARŞILAŞTIR ============ -->
+    <section class="view" id="v-compare">
+      <div class="pad">
+        <div><div class="eyebrow">Dersleri üst üste koy</div><h2>Karşılaştır</h2></div>
+        <p class="small muted">Birden fazla ders seç. Birini <b>sınav rotası</b> yaparsan diğerlerinde o rotadan saptığın yerler kırmızı görünür.</p>
+        <div class="card" id="cmpList"></div>
+        <div id="cmap"></div>
+        <div id="cmpResult" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" id="nav">
+    <button type="button" data-v="record" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>Kayıt</button>
+    <button type="button" data-v="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Derslerim</button>
+    <button type="button" data-v="compare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18c4-10 8 2 16-12"/><path d="M4 12c5-6 9 6 16 0" opacity=".55"/></svg>Karşılaştır</button>
+  </nav>
+</div>
+
+<div id="pocket" hidden>
+  <div class="pd"><span class="dot"></span><span id="pkInfo">Kayıt sürüyor</span></div>
+  <div class="pt">Cep modu</div>
+  <div class="ring" id="pkRing"><svg viewBox="0 0 126 126"><circle cx="63" cy="63" r="60"/></svg>Çıkmak için 2 sn basılı tut</div>
+</div>
+
+<div id="sheet" hidden><div class="box" id="sheetBox"></div></div>
+<div id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------------- ikonlar ---------------- */
+const ICON={
+  sag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V12a3 3 0 013-3h9"/><path d="M15 5l4 4-4 4"/></svg>',
+  sol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21V12a3 3 0 00-3-3H5"/><path d="M9 5L5 9l4 4"/></svg>',
+  hsag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21v-7l8-8"/><path d="M11 6h6v6"/></svg>',
+  hsol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-7L7 6"/><path d="M13 6H7v6"/></svg>',
+  u:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21V9a5 5 0 00-10 0v4"/><path d="M3 10l3 3 3-3"/></svg>',
+  duz:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V4"/><path d="M7 9l5-5 5 5"/></svg>',
+  stop:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  park:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M8 20V4h5a4 4 0 010 8H8"/></svg>',
+  flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s7-6.5 7-12a7 7 0 00-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  play:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>',
+  pause:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>'
+};
+function turnIcon(t){ if(t.kind==='u')return ICON.u; if(t.soft)return t.kind==='sag'?ICON.hsag:ICON.hsol; return ICON[t.kind]; }
+function turnVerb(t){ if(t.kind==='u')return 'U dönüşü yap'; if(t.soft)return t.kind==='sag'?'hafif sağa devam et':'hafif sola devam et'; return t.kind==='sag'?'sağa dön':'sola dön'; }
+
+/* ---------------- yardımcılar ---------------- */
+const RAD=Math.PI/180;
+function dist(a1,o1,a2,o2){const dA=(a2-a1)*RAD,dO=(o2-o1)*RAD;const s=Math.sin(dA/2)**2+Math.cos(a1*RAD)*Math.cos(a2*RAD)*Math.sin(dO/2)**2;return 12742000*Math.asin(Math.min(1,Math.sqrt(s)));}
+function brg(a1,o1,a2,o2){const y=Math.sin((o2-o1)*RAD)*Math.cos(a2*RAD);const x=Math.cos(a1*RAD)*Math.sin(a2*RAD)-Math.sin(a1*RAD)*Math.cos(a2*RAD)*Math.cos((o2-o1)*RAD);return (Math.atan2(y,x)/RAD+360)%360;}
+function adiff(a,b){let d=b-a;while(d>180)d-=360;while(d<=-180)d+=360;return d;}
+const nf1=new Intl.NumberFormat('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const nf2=new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function fmtD(m){ if(m<1000) return (Math.max(10,Math.round(m/10)*10))+' m'; return nf1.format(m/1000)+' km'; }
+function fmtT(s){ s=Math.max(0,Math.round(s)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60; return h? `${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}` : `${m}:${String(x).padStart(2,'0')}`; }
+function fmtMin(s){ s=Math.round(s); if(s<60) return s+' sn'; const m=Math.floor(s/60),x=s%60; return x? `${m} dk ${x} sn`:`${m} dk`; }
+function fmtDate(t){ return new Date(t).toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'short'}); }
+function fmtClock(t){ return new Date(t).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}); }
+const TYPE_LABEL={uzun:'Uzun tur',kisa:'Kısa tur',serbest:'Serbest'};
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+let toastT=0;
+function toast(msg,ms=3200){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,ms);}
+
+/* ---------------- depolama (IndexedDB) ---------------- */
+let DB=null; const MEM={};
+function openDB(){return new Promise((res)=>{try{const r=indexedDB.open('direksiyon-rotam',1);r.onupgradeneeded=()=>r.result.createObjectStore('lessons',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);}catch(e){res(null);}});}
+function store(mode){return DB.transaction('lessons',mode).objectStore('lessons');}
+function dbAll(){ if(!DB) return Promise.resolve(Object.values(MEM)); return new Promise(res=>{const r=store('readonly').getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>res([]);}); }
+function dbPut(o){ const clean=Object.assign({},o); delete clean._A; if(!DB){MEM[o.id]=clean;return Promise.resolve();} return new Promise(res=>{try{const r=store('readwrite').put(clean);r.onsuccess=()=>res();r.onerror=()=>{toast('Kaydedilemedi: tarayıcı depolaması dolu olabilir.');res();};}catch(e){res();}}); }
+function dbDel(id){ if(!DB){delete MEM[id];return Promise.resolve();} return new Promise(res=>{const r=store('readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>res();}); }
+let LESSONS=[];
+async function loadLessons(){ LESSONS=await dbAll(); LESSONS.sort((a,b)=>b.startedAt-a.startedAt); }
+
+/* ---------------- analiz ---------------- */
+function analyze(les){
+  const key=les.points.length+':'+les.split+':'+les.type;
+  if(les._A && les._A.key===key) return les._A;
+  const P=les.points, n=P.length;
+  const cum=new Array(n).fill(0), raw=new Array(n).fill(0);
+  for(let i=1;i<n;i++){
+    const d=dist(P[i-1][1],P[i-1][2],P[i][1],P[i][2]); cum[i]=cum[i-1]+d;
+    const dt=(P[i][0]-P[i-1][0])/1000;
+    raw[i]=(P[i][4]!=null&&P[i][4]>=0)?P[i][4]*3.6:(dt>0&&dt<15?d/dt*3.6:0);
+  }
+  const spd=raw.map((v,i)=>{let s=0,c=0;for(let j=Math.max(0,i-2);j<=Math.min(n-1,i+2);j++){s+=raw[j];c++;}return s/c;});
+  const dur=n>1?(P[n-1][0]-P[0][0])/1000:0;
+  let moving=0,maxS=0,over50=0,accSum=0;
+  for(let i=1;i<n;i++){const dt=(P[i][0]-P[i-1][0])/1000; accSum+=P[i][3]||0; if(dt>15)continue; if(spd[i]>=3)moving+=dt; if(spd[i]>50)over50+=dt; if(spd[i]>maxS)maxS=spd[i];}
+  // duruşlar
+  const stops=[]; let s0=-1;
+  for(let i=0;i<=n;i++){const still=i<n&&spd[i]<3; if(still&&s0<0)s0=i; if(!still&&s0>=0){const d=(P[i-1][0]-P[s0][0])/1000; if(d>=6&&s0>0&&i<n)stops.push({i0:s0,i1:i-1,i:Math.floor((s0+i-1)/2),dur:d}); s0=-1;}}
+  // sert fren / kalkış
+  const harsh=[]; let lastH=-1e12, j=0;
+  for(let i=1;i<n;i++){
+    while(j<i-1 && P[i][0]-P[j+1][0]>=2000) j++;
+    const dt=(P[i][0]-P[j][0])/1000; if(dt<1.5||dt>4) continue;
+    if((P[i][3]||99)>20) continue;
+    const a=(spd[i]-spd[j])/3.6/dt;
+    if(P[i][0]-lastH<6000) continue;
+    if(a<=-3.2){harsh.push({i,type:'fren',a});lastH=P[i][0];}
+    else if(a>=2.8){harsh.push({i,type:'kalkis',a});lastH=P[i][0];}
+  }
+  // bölümler
+  let split=null;
+  if(les.type!=='serbest' && n>10){ split=(les.split!=null)?Math.min(n-1,Math.max(0,les.split)):autoSplit(les.type,P,spd); }
+  let road=[0,n-1], park=null;
+  if(split!=null){ if(les.type==='uzun'){park=[0,split];road=[split,n-1];} else {road=[0,split];park=[split,n-1];} }
+  const phaseAt=i=>!park?'yol':(i>=park[0]&&i<=park[1]&&!(les.type==='uzun'&&i===split)?'park':'yol');
+  const turns=n>2?detectTurns(P,road[0],road[1]):[];
+  const pk=park?parkSummary(P,spd,cum,park[0],park[1],stops):null;
+  const roadStops=stops.filter(s=>s.i>=road[0]&&s.i<=road[1]);
+  const A={key,n,cum,spd,dur,moving,maxS,over50,accAvg:n>1?accSum/(n-1):0,stops,roadStops,harsh,split,road,park,phaseAt,turns,pk,
+    distance:n?cum[n-1]:0, roadDist:n?cum[road[1]]-cum[road[0]]:0, autoSplit:les.split==null};
+  les._A=A; return A;
+}
+function autoSplit(type,P,spd){
+  const n=P.length;
+  const avg=(i,dir)=>{let s=0,c=0;const t0=P[i][0];for(let j=i;j>=0&&j<n&&Math.abs(P[j][0]-t0)<=40000;j+=dir){s+=spd[j];c++;}return c?s/c:0;};
+  if(type==='uzun'){for(let i=0;i<n;i++) if(avg(i,1)>18) return i; return null;}
+  for(let i=n-1;i>=0;i--) if(avg(i,-1)>18) return i; return null;
+}
+function resample(P,a,b,step){
+  const pts=[]; let last=null;
+  for(let i=a;i<=b;i++){const p=P[i]; if((p[3]||0)>30)continue; if(!last||dist(last[1],last[2],p[1],p[2])>=4){pts.push({lat:p[1],lon:p[2],i});last=p;}}
+  if(pts.length<2) return pts;
+  const r=[{lat:pts[0].lat,lon:pts[0].lon,i:pts[0].i}]; let since=0;
+  for(let k=1;k<pts.length;k++){
+    const A=pts[k-1],B=pts[k],d=dist(A.lat,A.lon,B.lat,B.lon); let pos=step-since, emitted=false;
+    while(pos<=d){const f=pos/d; r.push({lat:A.lat+(B.lat-A.lat)*f,lon:A.lon+(B.lon-A.lon)*f,i:f<.5?A.i:B.i}); pos+=step; emitted=true;}
+    since = emitted? d-(pos-step) : since+d;
+  }
+  return r;
+}
+function detectTurns(P,a,b){
+  const r=resample(P,a,b,5), K=5; if(r.length<2*K+2) return [];
+  const dl=new Array(r.length).fill(0);
+  for(let k=K;k<r.length-K;k++) dl[k]=adiff(brg(r[k-K].lat,r[k-K].lon,r[k].lat,r[k].lon),brg(r[k].lat,r[k].lon,r[k+K].lat,r[k+K].lon));
+  const cand=[]; for(let k=0;k<r.length;k++) if(Math.abs(dl[k])>=35) cand.push(k);
+  cand.sort((x,y)=>Math.abs(dl[y])-Math.abs(dl[x]));
+  const taken=[]; for(const c of cand) if(taken.every(t=>Math.abs(t-c)>8)) taken.push(c);
+  taken.sort((x,y)=>x-y);
+  return taken.map(k=>{const d=dl[k],ad=Math.abs(d); const kind=ad>=140?'u':(d>0?'sag':'sol'); const aft=r[Math.min(r.length-1,k+5)];
+    return {i:r[k].i,lat:r[k].lat,lon:r[k].lon,deg:d,kind,soft:kind!=='u'&&ad<60,after:{lat:aft.lat,lon:aft.lon}};});
+}
+function parkSummary(P,spd,cum,a,b,stops){
+  const dur=(P[b][0]-P[a][0])/1000, d=cum[b]-cum[a];
+  const segs=[]; let s=-1;
+  for(let i=a;i<=b+1;i++){const mv=i<=b&&spd[i]>=2; if(mv&&s<0)s=i; if(!mv&&s>=0){const e=i-1; const L=dist(P[s][1],P[s][2],P[e][1],P[e][2]); if(L>=3)segs.push(brg(P[s][1],P[s][2],P[e][1],P[e][2])); s=-1;}}
+  let rev=0; for(let k=1;k<segs.length;k++) if(Math.abs(adiff(segs[k-1],segs[k]))>120) rev++;
+  const st=stops.filter(x=>x.i>=a&&x.i<=b);
+  return {dur,dist:d,stops:st.length,stopTime:st.reduce((s,x)=>s+x.dur,0),moves:segs.length,reversals:rev};
+}
+
+/* ---------------- adım listesi ---------------- */
+function buildSteps(les){
+  const A=analyze(les), P=les.points, st=[]; if(A.n<2) return st;
+  const streets=les.streets||{};
+  const [r0,r1]=A.road;
+  const parkItem=()=>A.pk&&({type:'park',i:A.park[0],title:'Park bölümü',sub:`${fmtMin(A.pk.dur)} · ${A.pk.stops} duruş · tahmini ${A.pk.reversals} ileri/geri değişimi`});
+  if(les.type==='uzun'&&A.park) st.push(parkItem());
+  st.push({type:'start',i:r0,title:les.type==='uzun'&&A.park?'Park alanından yola çık':'Başlangıç',sub:streets.start?streets.start:fmtClock(P[r0][0])});
+  let lastCum=A.cum[r0];
+  const ev=[];
+  A.turns.forEach((t,k)=>ev.push({type:'turn',i:t.i,t,k}));
+  A.roadStops.forEach(s=>ev.push({type:'stop',i:s.i,s}));
+  (les.notes||[]).forEach((nt,k)=>ev.push({type:'note',i:nt.i,nt,k}));
+  A.harsh.filter(h=>h.i>=r0&&h.i<=r1).forEach(h=>ev.push({type:'harsh',i:h.i,h}));
+  ev.sort((a,b)=>a.i-b.i);
+  let tn=0;
+  for(const e of ev){
+    if(e.type==='turn'){ tn++; const d=A.cum[e.i]-lastCum; lastCum=A.cum[e.i]; const s=streets['t'+e.i];
+      st.push({type:'turn',i:e.i,n:tn,t:e.t,title:`${fmtD(d)} sonra ${turnVerb(e.t)}`,sub:s?('→ '+s):''}); }
+    else if(e.type==='stop') st.push({type:'stop',i:e.i,title:`${Math.round(e.s.dur)} sn durdun`,sub:'Işık, yaya geçidi ya da kavşak'});
+    else if(e.type==='note') st.push({type:'note',i:e.i,k:e.k,title:e.nt.text,sub:'Notun'});
+    else if(e.type==='harsh') st.push({type:'harsh',i:e.i,title:e.h.type==='fren'?'Sert fren':'Sert kalkış',sub:`${nf1.format(Math.abs(e.h.a))} m/sn² (tahmini)`});
+  }
+  if(les.type==='kisa'&&A.park) st.push(parkItem());
+  (les.notes||[]).filter(nt=>A.park&&nt.i>=A.park[0]&&nt.i<=A.park[1]).forEach(()=>{});
+  st.push({type:'end',i:A.n-1,title:'Bitiş',sub:`${fmtD(A.distance)} · ${fmtT(A.dur)}`});
+  return st;
+}
+
+/* ---------------- harita ---------------- */
+const TILE='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_OPT={maxZoom:19,attribution:'© OpenStreetMap',subdomains:'abc'};
+function mkMap(el,opts){ const m=L.map(el,Object.assign({zoomControl:false,attributionControl:true},opts||{})).setView([41.015,28.979],12); L.tileLayer(TILE,TILE_OPT).addTo(m); return m; }
+function spdColor(v){ return v<8?'#D2372E':v<20?'#E0930F':v<35?'#2F9E4B':'#1E6FD9'; }
+const PARK_C='#7447C9', ROAD_C='#1E6FD9';
+function divMk(cls,html,size){ return L.divIcon({className:'',html:`<div class="mk ${cls}" style="width:${size}px;height:${size}px">${html}</div>`,iconSize:[size,size],iconAnchor:[size/2,size/2]}); }
+function coloredLine(group,P,A,from,to,colorFn,weight){
+  let cur=null,pts=[];
+  const flush=()=>{ if(pts.length>1) L.polyline(pts,{color:cur,weight:weight||6,opacity:.95,lineCap:'round',lineJoin:'round',interactive:false}).addTo(group); };
+  for(let i=from;i<=to;i++){ const c=colorFn(i); const ll=[P[i][1],P[i][2]]; if(c!==cur){ flush(); pts=pts.length?[pts[pts.length-1],ll]:[ll]; cur=c; } else pts.push(ll); }
+  flush();
+}
+
+/* ---------------- gezinme ---------------- */
+let VIEW='record';
+function show(v){
+  VIEW=v; $$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v||(v==='lesson'&&b.dataset.v==='list')));
+  if(v==='list') renderList();
+  if(v==='compare') renderCompare();
+  if(v==='record' && REC) setTimeout(()=>rmap&&rmap.invalidateSize(),50);
+  if(v!=='lesson') stopReplay();
+}
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)show(b.dataset.v);});
+$('#recflag').addEventListener('click',()=>show('record'));
+
+/* ================= KAYIT ================= */
+let selType='uzun';
+$('#typeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;selType=b.dataset.t;$$('#typeSeg button').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-checked',x===b);});});
+
+let REC=null, rmap=null, rLine=null, rMe=null, rTimer=0, wakeLock=null;
+function autoName(){ const n=LESSONS.filter(l=>!l.sample).length+1; return `Ders ${n} · ${new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}`; }
+
+function secureCheck(){
+  const w=$('#secureWarn');
+  if(!window.isSecureContext){ w.innerHTML=`<div class="banner"><b>Konum bu adreste çalışmaz.</b><span class="small">Tarayıcılar konumu sadece https:// ile açılan sayfalara verir. Dosyayı doğrudan açtıysan, kurulum adımlarındaki gibi ücretsiz bir https adrese yükle.</span></div>`; }
+  else if(!('geolocation' in navigator)) w.innerHTML=`<div class="banner"><b>Bu tarayıcı konum desteklemiyor.</b><span class="small">Chrome (Android) ya da Safari (iPhone) ile aç.</span></div>`;
+  else w.innerHTML='';
+}
+
+async function keepAwake(){
+  const c=$('#cWake');
+  if(!('wakeLock' in navigator)){ c.className='chip warn'; c.textContent='Ekranı açık tutamıyorum: otomatik kilidi kapat'; return; }
+  try{ wakeLock=await navigator.wakeLock.request('screen'); c.className='chip ok'; c.textContent='Ekran açık tutuluyor';
+    wakeLock.addEventListener('release',()=>{ wakeLock=null; if(REC){c.className='chip warn';c.textContent='Ekran kilidi serbest';} }); }
+  catch(e){ c.className='chip warn'; c.textContent='Ekranı açık tutamıyorum: otomatik kilidi kapat'; }
+}
+
+function ensureRmap(){ if(!rmap){ rmap=mkMap('rmap'); rLine=L.polyline([],{color:ROAD_C,weight:6,lineCap:'round'}).addTo(rmap); rMe=L.marker([0,0],{icon:divMk('me','',18),interactive:false}); } setTimeout(()=>rmap.invalidateSize(),60); }
+
+function beginWatch(){
+  REC.watchId=navigator.geolocation.watchPosition(onPos,onGeoErr,{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+  keepAwake();
+  clearInterval(rTimer); rTimer=setInterval(tickRec,1000);
+  $('#rec-idle').hidden=true; $('#rec-live').hidden=false; $('#recflag').classList.add('on');
+  ensureRmap(); renderPhaseBtn(); tickRec();
+  const pts=REC.les.points.map(p=>[p[1],p[2]]); rLine.setLatLngs(pts);
+  if(pts.length){ rMe.setLatLng(pts[pts.length-1]).addTo(rmap); rmap.setView(pts[pts.length-1],17); }
+}
+async function startRec(){
+  secureCheck();
+  if(!window.isSecureContext||!('geolocation' in navigator)){ toast('Konum bu sayfada kullanılamıyor. Yukarıdaki uyarıya bak.'); return; }
+  const les={id:'L'+Date.now(),name:autoName(),type:selType,startedAt:Date.now(),endedAt:null,points:[],gaps:[],notes:[],streets:{},split:null,status:'recording',quiz:[]};
+  REC={les,watchId:null,last:null,dist:0,lastSave:0,hiddenAt:0,phaseDone:false,lastSpd:0};
+  LESSONS.unshift(les); await dbPut(les);
+  beginWatch();
+}
+function resumeRec(les){
+  REC={les,watchId:null,last:les.points[les.points.length-1]||null,dist:0,lastSave:0,hiddenAt:0,phaseDone:les.split!=null,lastSpd:0};
+  for(let i=1;i<les.points.length;i++) REC.dist+=dist(les.points[i-1][1],les.points[i-1][2],les.points[i][1],les.points[i][2]);
+  beginWatch(); $('#resumeBox').innerHTML='';
+}
+function onPos(pos){
+  if(!REC) return;
+  const c=pos.coords, t=pos.timestamp||Date.now(), acc=Math.round(c.accuracy||999);
+  const g=$('#cGps'); g.className='chip '+(acc<=15?'ok':acc<=35?'warn':'bad'); g.textContent=`GPS ±${acc} m`;
+  const spd=(c.speed==null||isNaN(c.speed))?null:Math.max(0,+c.speed.toFixed(2));
+  if(spd!=null) REC.lastSpd=spd*3.6;
+  if(acc>35) return;
+  const p=[t,+c.latitude.toFixed(6),+c.longitude.toFixed(6),acc,spd,(c.heading==null||isNaN(c.heading))?null:Math.round(c.heading)];
+  const les=REC.les, last=REC.last;
+  if(last){ const d=dist(last[1],last[2],p[1],p[2]), dt=t-last[0]; if(dt<=0) return;
+    if(d<1.5&&dt<4000&&!(spd>1)) return;
+    if(dt>15000) les.gaps.push([last[0],t]);
+    REC.dist+=d; if(spd==null){ const v=dt<8000?d/(dt/1000)*3.6:0; REC.lastSpd=v<180?v:REC.lastSpd; } }
+  les.points.push(p); REC.last=p;
+  const ll=[p[1],p[2]]; rLine.addLatLng(ll); rMe.setLatLng(ll); if(!rmap.hasLayer(rMe)){rMe.addTo(rmap);rmap.setView(ll,17);} else if(VIEW==='record') rmap.panTo(ll,{animate:false});
+  if(t-REC.lastSave>8000){ REC.lastSave=t; dbPut(les); }
+}
+function onGeoErr(e){
+  const g=$('#cGps'); g.className='chip bad';
+  if(e.code===1){ g.textContent='Konum izni yok'; toast('Konum izni verilmedi. Tarayıcı ayarlarından bu siteye konum iznini aç.',6000); }
+  else g.textContent= e.code===3?'GPS sinyali zayıf…':'Konum alınamadı';
+}
+function tickRec(){
+  if(!REC) return; const les=REC.les; const el=(Date.now()-les.startedAt)/1000;
+  $('#gTime').textContent=fmtT(el); $('#gDist').textContent=nf2.format(REC.dist/1000);
+  const fresh=REC.last&&Date.now()-REC.last[0]<6000; $('#gSpd').textContent=Math.round(fresh?REC.lastSpd:0);
+  $('#recflagT').textContent=fmtT(el); $('#pkInfo').textContent=`Kayıt sürüyor · ${fmtT(el)} · ${nf2.format(REC.dist/1000)} km · ${les.points.length} nokta`;
+}
+function renderPhaseBtn(){
+  const les=REC.les, b=$('#btnPhase'), c=$('#cPhase');
+  if(les.type==='serbest'){ b.hidden=true; c.className='chip acc'; c.textContent='Serbest sürüş'; return; }
+  b.hidden=false;
+  const first=les.type==='uzun'?'park':'yol';
+  const now=REC.phaseDone?(first==='park'?'yol':'park'):first;
+  c.className='chip '+(now==='park'?'park':'acc'); c.textContent=now==='park'?'Şu an: Park bölümü':'Şu an: Yol bölümü';
+  if(REC.phaseDone){ b.disabled=true; b.textContent='Bölüm değişimi işaretlendi ✓ (sonra düzeltebilirsin)'; }
+  else { b.disabled=false; b.textContent=first==='park'?'Park bitti, yola çıkıyorum':'Yol bitti, park alanına geldim'; }
+}
+$('#btnPhase').addEventListener('click',()=>{ if(!REC)return; REC.les.split=Math.max(0,REC.les.points.length-1); REC.phaseDone=true; renderPhaseBtn(); dbPut(REC.les); toast('İşaretlendi. Yanlışsa ders sonrası "Tarif" sekmesinden kaydırabilirsin.'); });
+$('#btnStart').addEventListener('click',startRec);
+
+async function stopRec(){
+  if(!REC) return; const les=REC.les;
+  navigator.geolocation.clearWatch(REC.watchId); clearInterval(rTimer);
+  try{ wakeLock&&wakeLock.release(); }catch(e){}
+  wakeLock=null; les.status='done'; les.endedAt=Date.now(); await dbPut(les);
+  REC=null; $('#rec-live').hidden=true; $('#rec-idle').hidden=false; $('#recflag').classList.remove('on');
+  rLine.setLatLngs([]); rmap.removeLayer(rMe); exitPocket();
+  if(les.points.length<5){ toast('Çok az konum kaydedildi, ders kaydı boş kaldı.',5000); await dbDel(les.id); await loadLessons(); return; }
+  await loadLessons(); openLesson(les.id);
+  toast('Kayıt bitti. Rotan hazır.');
+}
+
+/* basılı tutma */
+function holdable(el,ms,fn){
+  let t=0; const start=e=>{ e.preventDefault(); el.classList.add('holding'); t=setTimeout(()=>{el.classList.remove('holding');fn();},ms); };
+  const cancel=()=>{ clearTimeout(t); el.classList.remove('holding'); };
+  el.addEventListener('pointerdown',start); ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,cancel));
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fn(); } });
+}
+holdable($('#btnStop'),1200,stopRec);
+
+/* cep modu */
+function enterPocket(){ $('#pocket').hidden=false; tickRec(); try{ const d=document.documentElement; d.requestFullscreen&&d.requestFullscreen().catch(()=>{}); }catch(e){} }
+function exitPocket(){ $('#pocket').hidden=true; try{ document.fullscreenElement&&document.exitFullscreen().catch(()=>{}); }catch(e){} }
+$('#btnPocket').addEventListener('click',enterPocket);
+holdable($('#pkRing'),2000,exitPocket);
+$('#pocket').addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+
+document.addEventListener('visibilitychange',()=>{
+  if(!REC) return;
+  if(document.visibilityState==='hidden'){ REC.hiddenAt=Date.now(); dbPut(REC.les); }
+  else { if(REC.hiddenAt&&Date.now()-REC.hiddenAt>5000) toast(`Uygulama ${Math.round((Date.now()-REC.hiddenAt)/1000)} sn arka plandaydı. Bu sürede kayıt durmuş olabilir; o kısım haritada düz çizgi görünür.`,6000); REC.hiddenAt=0; keepAwake(); }
+});
+window.addEventListener('pagehide',()=>{ if(REC) dbPut(REC.les); });
+
+function renderResume(){
+  const box=$('#resumeBox'); const r=LESSONS.find(l=>l.status==='recording');
+  if(!r||REC){ box.innerHTML=''; return; }
+  box.innerHTML=`<div class="banner"><b>Yarım kalan kayıt var: ${esc(r.name)}</b><span class="small">${r.points.length} nokta kaydedilmiş. Sayfa kapanmış ya da yenilenmiş olabilir.</span><div class="row"><button class="btn primary grow" id="rsGo" type="button">Kayda devam et</button><button class="btn grow" id="rsEnd" type="button">Kaydı bitir</button></div></div>`;
+  $('#rsGo').onclick=()=>resumeRec(r);
+  $('#rsEnd').onclick=async()=>{ r.status='done'; r.endedAt=r.points.length?r.points[r.points.length-1][0]:Date.now(); if(r.points.length<5){await dbDel(r.id);} else await dbPut(r); await loadLessons(); renderResume(); if(r.points.length>=5) openLesson(r.id); };
+}
+
+/* ================= DERSLER ================= */
+function renderList(){
+  const box=$('#lessonList'); const list=LESSONS.filter(l=>l.status!=='recording');
+  if(!list.length){ box.innerHTML=`<div class="empty"><b>Henüz ders yok.</b><span class="small">İlk dersinde Kayıt sekmesinden Başlat'a bas. Şimdi denemek istersen aşağıdan örnek ders ekleyebilirsin.</span></div>`; return; }
+  box.innerHTML=list.map(l=>{ const A=analyze(l); const best=(l.quiz||[]).reduce((m,q)=>Math.max(m,Math.round(q.score/q.total*100)),-1);
+    return `<button class="lesson" type="button" data-id="${l.id}">
+      <span class="nm">${esc(l.name)}</span><span class="go">›</span>
+      <span class="meta"><span class="chip ${l.type==='uzun'?'park':'acc'}">${TYPE_LABEL[l.type]}</span>${l.ref?'<span class="chip ok">Sınav rotası</span>':''}${l.sample?'<span class="chip">Örnek</span>':''}
+      <span class="small muted num">${fmtDate(l.startedAt)} · ${nf1.format(A.distance/1000)} km · ${fmtT(A.dur)} · ${A.turns.length} dönüş${best>=0?` · test %${best}`:''}</span></span></button>`; }).join('');
+}
+$('#lessonList').addEventListener('click',e=>{const b=e.target.closest('.lesson'); if(b) openLesson(b.dataset.id);});
+
+function saveFile(name,text,mime){
+  const blob=new Blob([text],{type:mime});
+  try{ const f=new File([blob],name,{type:mime}); if(navigator.canShare&&navigator.canShare({files:[f]})){ navigator.share({files:[f],title:name}).catch(()=>{}); return; } }catch(e){}
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+}
+$('#btnExport').addEventListener('click',()=>{ const data={app:'direksiyon-rotam',v:1,exportedAt:Date.now(),lessons:LESSONS.map(l=>{const c=Object.assign({},l);delete c._A;return c;})};
+  saveFile(`direksiyon-rotam-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data),'application/json'); });
+function toGPX(l){
+  const pts=l.points.map(p=>`<trkpt lat="${p[1]}" lon="${p[2]}"><time>${new Date(p[0]).toISOString()}</time></trkpt>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Direksiyon Rotam" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${esc(l.name)}</name><trkseg>${pts}</trkseg></trk></gpx>`;
+}
+$('#fileImport').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f) return; const txt=await f.text(); let added=0;
+  try{
+    if(/^\s*</.test(txt)){ const x=new DOMParser().parseFromString(txt,'application/xml'); const tp=Array.from(x.getElementsByTagName('trkpt')).concat(Array.from(x.getElementsByTagName('rtept')));
+      let t0=Date.now()-tp.length*1000;
+      const pts=tp.map((n,k)=>{const tm=n.getElementsByTagName('time')[0]; const t=tm?Date.parse(tm.textContent):t0+k*1000; return [t,+n.getAttribute('lat'),+n.getAttribute('lon'),8,null,null];}).filter(p=>!isNaN(p[1]));
+      if(pts.length<5) throw 0; const nm=(x.getElementsByTagName('name')[0]||{}).textContent||f.name.replace(/\.gpx$/i,'');
+      await dbPut({id:'L'+Date.now(),name:nm,type:'serbest',startedAt:pts[0][0],endedAt:pts[pts.length-1][0],points:pts,gaps:[],notes:[],streets:{},split:null,status:'done',quiz:[]}); added=1;
+    } else { const d=JSON.parse(txt); const arr=Array.isArray(d)?d:(d.lessons||[]); for(const l of arr){ if(l&&l.id&&Array.isArray(l.points)){ if(l.status==='recording') l.status='done'; await dbPut(l); added++; } } }
+  }catch(err){ toast('Dosya okunamadı. Bu uygulamadan alınmış .json ya da bir .gpx dosyası seç.',5000); }
+  e.target.value=''; await loadLessons(); renderList(); if(added) toast(`${added} ders içe aktarıldı.`);
+});
+
+/* örnek ders üreteci */
+function makeSample(variant){
+  let lat=40.98655, lon=29.03660, hdg=0, t=Date.now()-86400000*(variant?1:2), v=0;
+  const pts=[]; const rnd=()=>(Math.random()-.5)*2.4;
+  const push=(sp)=>{ pts.push([t,+(lat+rnd()/111320).toFixed(6),+(lon+rnd()/(111320*Math.cos(lat*RAD))).toFixed(6),5,+sp.toFixed(2),Math.round((hdg+360)%360)]); t+=1000; };
+  const move=m=>{ lat+=m*Math.cos(hdg*RAD)/111320; lon+=m*Math.sin(hdg*RAD)/(111320*Math.cos(lat*RAD)); };
+  const wait=s=>{ for(let k=0;k<s;k++) push(0); v=0; };
+  const drive=(d,vmax,vend)=>{ vend=vend==null?4:vend; let x=0; while(x<d-.5){ const rem=d-x; const vt=Math.min(vmax,Math.sqrt(vend*vend+2*1.5*rem)); v=v<vt?Math.min(vt,v+1.6):Math.max(vt,v-2.2); if(v<.8)v=.8; const s=Math.min(v,rem); move(s); x+=s; push(v);} };
+  const turn=deg=>{ for(let k=0;k<6;k++){ hdg+=deg/6; move(4); push(4);} v=4; };
+  const back=d=>{ let x=0; while(x<d){ move(-1.4); x+=1.4; push(1.4);} v=0; };
+  const slowTurn=deg=>{ for(let k=0;k<8;k++){ hdg+=deg/8; move(1.6); push(1.6);} };
+  const hardBrake=()=>{ while(v>3){ v=Math.max(3,v-4.6); move(v); push(v);} };
+  // park bölümü
+  wait(12); drive(14,2.5,0); wait(8); back(11); wait(6); slowTurn(90); drive(8,2,0); wait(7); back(9); wait(9); drive(6,2,0); wait(6); back(5); wait(8);
+  slowTurn(-90); drive(30,5);
+  // yol
+  turn(-90); drive(380,12); turn(90); drive(260,11,0); wait(24); drive(420,13); turn(-90);
+  drive(160,11,11); hardBrake(); drive(170,10); turn(90);
+  if(variant){ drive(240,12); turn(-90); drive(180,10); turn(90); drive(200,12); turn(90); drive(180,10); turn(-90); drive(90,10); }
+  else { drive(520,13); }
+  turn(40); drive(260,12); turn(90); drive(330,12,0); wait(18); drive(180,10); turn(180); drive(240,11,0); wait(10);
+  return {id:'S'+Date.now()+variant,name:variant?'Örnek ders B (farklı yol)':'Örnek ders A',type:'uzun',sample:true,startedAt:pts[0][0],endedAt:pts[pts.length-1][0],points:pts,gaps:[],notes:[{i:Math.floor(pts.length*.55),text:'Burada sol şeride geç, hoca uyardı.'}],streets:{},split:null,status:'done',quiz:[]};
+}
+$('#btnSample').addEventListener('click',async()=>{ const has=LESSONS.filter(l=>l.sample).length; const s=makeSample(has%2); await dbPut(s); await loadLessons(); renderList(); toast(`${s.name} eklendi. Sanal bir rota, haritada binaların üstünden geçebilir.`); });
+
+/* ================= DERS GÖRÜNÜMÜ ================= */
+let CUR=null, lmap=null, gMap=null, gReplay=null, gQuiz=null, mapMode='hiz', PANEL='tarif';
+function ensureLmap(){ if(lmap) return; lmap=mkMap('lmap'); L.control.zoom({position:'bottomright'}).addTo(lmap); gMap=L.layerGroup().addTo(lmap); gReplay=L.layerGroup(); gQuiz=L.layerGroup();
+  lmap.on('click',e=>{ if(PANEL==='tarif'||PANEL==='stat') openNoteSheet(null,e.latlng); }); }
+function openLesson(id){
+  const l=LESSONS.find(x=>x.id===id); if(!l) return; CUR=l; l.notes=l.notes||[]; l.streets=l.streets||{}; l.quiz=l.quiz||[];
+  show('lesson'); ensureLmap(); $('#lname').value=l.name;
+  setTimeout(()=>{ lmap.invalidateSize(); drawLessonMap(true); setPanel('tarif'); },40);
+}
+$('#btnBack').addEventListener('click',()=>show('list'));
+$('#lname').addEventListener('change',e=>{ if(!CUR)return; CUR.name=e.target.value.trim()||CUR.name; dbPut(CUR); });
+$('#mapTools').addEventListener('click',e=>{const b=e.target.closest('button[data-m]'); if(!b)return; mapMode=b.dataset.m; $$('#mapTools button').forEach(x=>x.classList.toggle('on',x===b)); drawLessonMap(false);});
+
+function drawLessonMap(fit){
+  const l=CUR, P=l.points, A=analyze(l); gMap.clearLayers(); if(A.n<2) return;
+  if(mapMode==='hiz') coloredLine(gMap,P,A,0,A.n-1,i=>spdColor(A.spd[i]));
+  else coloredLine(gMap,P,A,0,A.n-1,i=>A.phaseAt(i)==='park'?PARK_C:ROAD_C);
+  (l.gaps||[]).length && null;
+  L.marker([P[0][1],P[0][2]],{icon:divMk('se','A',22)}).addTo(gMap);
+  L.marker([P[A.n-1][1],P[A.n-1][2]],{icon:divMk('se','B',22)}).addTo(gMap);
+  A.turns.forEach((t,k)=>L.marker([t.lat,t.lon],{icon:divMk('turn',k+1,22)}).addTo(gMap).on('click',()=>focusStep(t.i)));
+  A.roadStops.forEach(s=>L.marker([P[s.i][1],P[s.i][2]],{icon:divMk('stop',Math.round(s.dur),20),zIndexOffset:-100}).addTo(gMap));
+  A.harsh.forEach(h=>L.marker([P[h.i][1],P[h.i][2]],{icon:divMk('harsh','<b>!</b>',16)}).addTo(gMap));
+  l.notes.forEach((nt,k)=>{ const p=P[Math.min(nt.i,A.n-1)]; L.marker([p[1],p[2]],{icon:divMk('note','✎',22)}).addTo(gMap).on('click',()=>openNoteSheet(k)); });
+  if(A.split!=null){ const p=P[A.split]; L.marker([p[1],p[2]],{icon:divMk('split','P',20)}).addTo(gMap); }
+  $('#legend').innerHTML= mapMode==='hiz'
+    ? `<span><i style="background:#D2372E"></i>0–8</span><span><i style="background:#E0930F"></i>8–20</span><span><i style="background:#2F9E4B"></i>20–35</span><span><i style="background:#1E6FD9"></i>35+ km/sa</span>`
+    : `<span><i style="background:${PARK_C}"></i>Park bölümü</span><span><i style="background:${ROAD_C}"></i>Yol bölümü</span>`;
+  if(fit) lmap.fitBounds(L.latLngBounds(P.map(p=>[p[1],p[2]])),{padding:[30,30]});
+}
+function focusStep(i){ const p=CUR.points[i]; if(p) lmap.setView([p[1],p[2]],18); }
+
+$('#subtabs').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setPanel(b.dataset.p);});
+function setPanel(p){
+  PANEL=p; $$('#subtabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  ['tarif','oynat','test','stat'].forEach(k=>$('#p-'+k).hidden=k!==p);
+  stopReplay(); [gMap,gReplay,gQuiz].forEach(g=>lmap.hasLayer(g)&&lmap.removeLayer(g));
+  $('#mapTools').hidden=p!=='tarif'&&p!=='stat'; $('#legend').hidden=p==='test';
+  if(p==='tarif'||p==='stat'){ gMap.addTo(lmap); }
+  if(p==='tarif') renderTarif(); else if(p==='oynat'){ gReplay.addTo(lmap); renderReplay(); } else if(p==='test'){ gQuiz.addTo(lmap); renderQuizIntro(); } else renderStats();
+  $('#lpanel').scrollTop=0;
+}
+
+/* ---- yol tarifi ---- */
+let splitSaveT=0;
+function renderTarif(){
+  const l=CUR, A=analyze(l), steps=buildSteps(l), box=$('#p-tarif');
+  let html='';
+  if(A.n<2){ box.innerHTML='<p class="muted">Bu derste yeterli konum yok.</p>'; return; }
+  if(l.type!=='serbest'){
+    const sv=A.split==null?(l.type==='uzun'?0:A.n-1):A.split;
+    html+=`<div class="card split"><div class="row"><b class="grow">Park / yol ayrımı</b><span class="chip ${A.autoSplit?'':'acc'}">${A.autoSplit?'otomatik':'elle ayarlı'}</span></div>
+      <input type="range" id="splitR" min="0" max="${A.n-1}" value="${sv}" aria-label="Park ve yol ayrım noktası">
+      <div class="row small muted"><span class="grow" id="splitInfo">${splitInfo(A)}</span><button class="btn ghost small" id="splitAuto" type="button">Otomatiğe dön</button></div>
+      <p class="small muted">Mor P işaretini sürükler gibi kaydır. ${l.type==='uzun'?'Uzun turda park önce olur.':'Kısa turda park en sonda olur.'}</p></div>`;
+  }
+  const hasTurns=A.turns.length>0; const need=A.turns.filter(t=>!l.streets['t'+t.i]).length+(l.streets.start?0:1);
+  html+=`<div class="row"><div class="grow"><h3>${A.turns.length} dönüş, ${A.roadStops.length} duruş</h3><p class="small muted">Satıra dokun, haritada oraya gitsin. Haritaya dokunarak not ekle.</p></div></div>`;
+  if(hasTurns) html+=`<button class="btn" id="btnStreets" type="button" ${need?'':'disabled'}>${need?'Sokak adlarını getir (internet gerekir)':'Sokak adları eklendi ✓'}</button>`;
+  html+='<ol class="steps">'+steps.map(s=>{
+    let ic='', cls=s.type;
+    if(s.type==='turn') ic=turnIcon(s.t); else if(s.type==='stop') ic=ICON.stop; else if(s.type==='park') ic=ICON.park; else if(s.type==='note') ic=ICON.pin; else if(s.type==='harsh') ic=ICON.warn; else ic=ICON.flag;
+    return `<li class="step ${cls}" data-i="${s.i}" ${s.type==='note'?`data-note="${s.k}"`:''}><span class="ic">${ic}</span><span><span class="t">${s.n?`<span class="n">${s.n}.</span>`:''}${esc(s.title)}</span>${s.sub?`<br><span class="s">${esc(s.sub)}</span>`:''}</span></li>`;
+  }).join('')+'</ol>';
+  if(!hasTurns) html+=`<p class="small muted">Dönüş bulunamadı. Kayıt çok kısa olabilir ya da GPS zayıf kalmış olabilir.</p>`;
+  box.innerHTML=html;
+  const r=$('#splitR'); if(r){ r.oninput=()=>{ l.split=+r.value; const A2=analyze(l); $('#splitInfo').textContent=splitInfo(A2); drawLessonMap(false); clearTimeout(splitSaveT); splitSaveT=setTimeout(()=>{dbPut(l); renderTarif();},600); };
+    $('#splitAuto').onclick=()=>{ l.split=null; dbPut(l); drawLessonMap(false); renderTarif(); }; }
+  const bs=$('#btnStreets'); if(bs) bs.onclick=fetchStreets;
+  box.querySelector('.steps').onclick=e=>{ const li=e.target.closest('.step'); if(!li)return; if(li.dataset.note!=null){ openNoteSheet(+li.dataset.note); return; } focusStep(+li.dataset.i); };
+}
+function splitInfo(A){ if(A.split==null) return 'Otomatik ayrım bulunamadı, kaydırarak ayarla.'; const P=CUR.points; return `Ayrım: ${fmtClock(P[A.split][0])} · başlangıçtan ${fmtD(A.cum[A.split])}`; }
+
+let streetBusy=false;
+async function fetchStreets(){
+  if(streetBusy) return; streetBusy=true; const l=CUR, A=analyze(l), bs=$('#btnStreets');
+  const jobs=[]; const P=l.points;
+  if(!l.streets.start){ const p=P[A.road[0]]; jobs.push({key:'start',lat:p[1],lon:p[2]}); }
+  A.turns.forEach(t=>{ if(!l.streets['t'+t.i]) jobs.push({key:'t'+t.i,lat:t.after.lat,lon:t.after.lon}); });
+  let done=0, fail=0;
+  for(const j of jobs){
+    if(CUR!==l) break;
+    bs.textContent=`Sokak adları alınıyor… ${done+1}/${jobs.length}`;
+    try{ const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&accept-language=tr&lat=${j.lat}&lon=${j.lon}`,{headers:{'Accept':'application/json'}});
+      const d=await r.json(); const a=d.address||{}; const nm=a.road||a.pedestrian||a.neighbourhood||a.suburb||''; if(nm) l.streets[j.key]=nm; }
+    catch(e){ fail++; }
+    done++; await new Promise(r=>setTimeout(r,1150));
+  }
+  streetBusy=false; await dbPut(l); if(CUR===l&&PANEL==='tarif') renderTarif();
+  if(fail) toast(`${fail} noktanın adı alınamadı. İnternet bağlantısını kontrol edip tekrar dene.`);
+}
+
+/* ---- notlar ---- */
+function nearestIdx(latlng){ const P=CUR.points; let bi=0,bd=1e18; for(let i=0;i<P.length;i++){const d=dist(latlng.lat,latlng.lng,P[i][1],P[i][2]); if(d<bd){bd=d;bi=i;}} return {i:bi,d:bd}; }
+function openNoteSheet(k,latlng){
+  const l=CUR; let i, text='';
+  if(k!=null){ i=l.notes[k].i; text=l.notes[k].text; }
+  else { const r=nearestIdx(latlng); if(r.d>60){ toast('Not eklemek için rotanın üstüne ya da yakınına dokun.'); return; } i=r.i; }
+  const box=$('#sheetBox');
+  box.innerHTML=`<h3>${k!=null?'Notu düzenle':'Bu noktaya not ekle'}</h3><p class="small muted">Örnek: "Burada sağ şeritte kal", "Park ederken arka tekerlek çizgiye gelince direksiyonu çevir".</p>
+    <textarea id="noteTxt" maxlength="300" placeholder="Hocanın uyarısı, dikkat edilecek şey…">${esc(text)}</textarea>
+    <div class="row">${k!=null?'<button class="btn danger" id="nDel" type="button">Sil</button>':''}<button class="btn grow" id="nCancel" type="button">Vazgeç</button><button class="btn primary grow" id="nSave" type="button">Kaydet</button></div>`;
+  $('#sheet').hidden=false; setTimeout(()=>$('#noteTxt').focus(),50);
+  $('#nCancel').onclick=closeSheet;
+  $('#nSave').onclick=()=>{ const v=$('#noteTxt').value.trim(); if(!v){closeSheet();return;} if(k!=null) l.notes[k].text=v; else l.notes.push({i,text:v}); dbPut(l); closeSheet(); drawLessonMap(false); if(PANEL==='tarif') renderTarif(); toast('Not kaydedildi.'); };
+  if(k!=null) $('#nDel').onclick=()=>{ l.notes.splice(k,1); dbPut(l); closeSheet(); drawLessonMap(false); if(PANEL==='tarif') renderTarif(); };
+}
+function closeSheet(){ $('#sheet').hidden=true; }
+$('#sheet').addEventListener('click',e=>{ if(e.target.id==='sheet') closeSheet(); });
+
+$('#btnMore').addEventListener('click',()=>{
+  const l=CUR; const box=$('#sheetBox');
+  box.innerHTML=`<h3>${esc(l.name)}</h3>
+    <div class="seg" id="mType">${['uzun','kisa','serbest'].map(t=>`<button type="button" data-t="${t}" class="${l.type===t?'on':''}"><span>${TYPE_LABEL[t]}</span></button>`).join('')}</div>
+    <button class="btn" id="mRef" type="button">${l.ref?'Sınav rotası işaretini kaldır':'Bunu sınav rotası olarak işaretle'}</button>
+    <button class="btn" id="mGpx" type="button">GPX olarak dışa aktar</button>
+    <button class="btn danger" id="mDel" type="button">Dersi sil</button>
+    <button class="btn ghost" id="mClose" type="button">Kapat</button>`;
+  $('#sheet').hidden=false;
+  $('#mType').onclick=e=>{const b=e.target.closest('button'); if(!b)return; l.type=b.dataset.t; l.split=null; dbPut(l); closeSheet(); drawLessonMap(false); setPanel(PANEL); toast(`Tur tipi: ${TYPE_LABEL[l.type]}`);};
+  $('#mRef').onclick=()=>{ const on=!l.ref; LESSONS.forEach(x=>{ if(x.ref&&on){x.ref=false;dbPut(x);} }); l.ref=on; dbPut(l); closeSheet(); toast(on?'Sınav rotası olarak işaretlendi. Karşılaştır sekmesinde kullanılır.':'İşaret kaldırıldı.'); };
+  $('#mGpx').onclick=()=>{ saveFile(l.name.replace(/[^\wçğıöşüÇĞİÖŞÜ .-]/g,'_')+'.gpx',toGPX(l),'application/gpx+xml'); closeSheet(); };
+  $('#mClose').onclick=closeSheet;
+  $('#mDel').onclick=()=>{ const b=$('#mDel'); if(b.dataset.sure){ dbDel(l.id).then(loadLessons).then(()=>{closeSheet();show('list');toast('Ders silindi.');}); } else { b.dataset.sure='1'; b.textContent='Emin misin? Silmek için tekrar dokun'; } };
+});
+
+/* ---- tekrar oynatma ---- */
+let RP={playing:false,t:0,speed:10,raf:0,last:0,follow:true,idx:0,trail:null,me:null,lastPan:0};
+function renderReplay(){
+  const l=CUR, P=l.points, A=analyze(l), box=$('#p-oynat');
+  gReplay.clearLayers(); if(A.n<2){ box.innerHTML='<p class="muted">Yeterli konum yok.</p>'; return; }
+  L.polyline(P.map(p=>[p[1],p[2]]),{color:'#8A97AD',weight:5,opacity:.55}).addTo(gReplay);
+  RP.trail=L.polyline([],{color:ROAD_C,weight:7,lineCap:'round'}).addTo(gReplay);
+  RP.me=L.marker([P[0][1],P[0][2]],{icon:divMk('me','',20),zIndexOffset:1000}).addTo(gReplay);
+  A.turns.forEach((t,k)=>L.marker([t.lat,t.lon],{icon:divMk('turn',k+1,20)}).addTo(gReplay));
+  RP.t=0; RP.idx=0; RP.playing=false;
+  box.innerHTML=`<div class="nextturn" id="rpNext">${ICON.flag}<span>Başlamak için oynat</span></div>
+    <div class="rp-controls"><button class="btn primary" id="rpPlay" type="button" style="min-width:110px">${ICON.play}<span>Oynat</span></button>
+      <select class="btn grow" id="rpSpeed" aria-label="Hız"><option value="1">1× gerçek hız</option><option value="5">5×</option><option value="10" selected>10×</option><option value="30">30×</option></select></div>
+    <input type="range" id="rpSlider" min="0" max="${Math.round(A.dur)}" value="0" step="1" aria-label="Zaman">
+    <div class="rp-info"><div class="tile"><span class="v num" id="rpT">0:00</span><span class="l">Zaman</span></div><div class="tile"><span class="v num" id="rpS">0</span><span class="l">km/sa</span></div><div class="tile"><span class="v num" id="rpD">0,0</span><span class="l">km</span></div></div>
+    <label class="row small"><input type="checkbox" id="rpFollow" checked> Haritada aracı takip et</label>
+    <p class="small muted">Dönüşten önce durdurup "burada ne yapıyordum?" diye kendine sor, sonra devam ettir.</p>`;
+  $('#rpPlay').onclick=()=>{ RP.playing?pauseReplay():playReplay(); };
+  $('#rpSpeed').onchange=e=>RP.speed=+e.target.value; RP.speed=10;
+  $('#rpSlider').oninput=e=>{ RP.t=+e.target.value; replayRender(true); };
+  $('#rpFollow').onchange=e=>RP.follow=e.target.checked; RP.follow=true;
+  lmap.setView([P[0][1],P[0][2]],17); replayRender(true);
+}
+function playReplay(){ const A=analyze(CUR); if(RP.t>=A.dur) RP.t=0; RP.playing=true; RP.last=performance.now(); setPlayBtn(); RP.raf=requestAnimationFrame(stepReplay); }
+function pauseReplay(){ RP.playing=false; cancelAnimationFrame(RP.raf); setPlayBtn(); }
+function stopReplay(){ RP.playing=false; cancelAnimationFrame(RP.raf); }
+function setPlayBtn(){ const b=$('#rpPlay'); if(b) b.innerHTML=RP.playing?`${ICON.pause}<span>Durdur</span>`:`${ICON.play}<span>Oynat</span>`; }
+function stepReplay(now){ if(!RP.playing||!CUR) return; const A=analyze(CUR); RP.t+=(now-RP.last)/1000*RP.speed; RP.last=now; if(RP.t>=A.dur){RP.t=A.dur; replayRender(false); pauseReplay(); return;} replayRender(false); RP.raf=requestAnimationFrame(stepReplay); }
+function replayRender(jump){
+  const l=CUR, P=l.points, A=analyze(l); const T=P[0][0]+RP.t*1000;
+  let lo=0,hi=A.n-1; while(lo<hi){const m=(lo+hi+1)>>1; if(P[m][0]<=T) lo=m; else hi=m-1;} const i=lo;
+  const j=Math.min(A.n-1,i+1); const f=P[j][0]>P[i][0]?Math.min(1,(T-P[i][0])/(P[j][0]-P[i][0])):0;
+  const ll=[P[i][1]+(P[j][1]-P[i][1])*f,P[i][2]+(P[j][2]-P[i][2])*f];
+  if(jump||i!==RP.idx){ RP.trail.setLatLngs(P.slice(0,i+1).map(p=>[p[1],p[2]]).concat([ll])); RP.idx=i; } else { const ls=RP.trail.getLatLngs(); ls[ls.length-1]=L.latLng(ll); RP.trail.setLatLngs(ls); }
+  RP.me.setLatLng(ll);
+  const now=performance.now(); if(RP.follow&&(jump||now-RP.lastPan>400)){ lmap.panTo(ll,{animate:false}); RP.lastPan=now; }
+  $('#rpT').textContent=fmtT(RP.t); $('#rpS').textContent=Math.round(A.spd[i]); const cd=A.cum[i]+(A.cum[j]-A.cum[i])*f; $('#rpD').textContent=nf1.format(cd/1000);
+  const sl=$('#rpSlider'); if(sl&&!jump) sl.value=Math.round(RP.t);
+  const nt=A.turns.find(t=>t.i>i); const nx=$('#rpNext');
+  if(A.phaseAt(i)==='park') nx.innerHTML=`${ICON.park}<span>Park bölümü</span>`;
+  else if(nt){ const k=A.turns.indexOf(nt)+1; const d=A.cum[nt.i]-cd; const s=CUR.streets['t'+nt.i]; nx.innerHTML=`${turnIcon(nt)}<span>${k}. ${fmtD(Math.max(0,d))} sonra ${turnVerb(nt)}${s?`<br><small style="font:500 15px var(--body)">→ ${esc(s)}</small>`:''}</span>`; }
+  else nx.innerHTML=`${ICON.flag}<span>Bitişe doğru</span>`;
+}
+
+/* ---- ezber testi ---- */
+let QZ=null;
+const QOPTS=[['sag','Sağa dön'],['sol','Sola dön'],['duz','Düz devam'],['u','U dönüşü']];
+function renderQuizIntro(){
+  const l=CUR, A=analyze(l), box=$('#p-test'); gQuiz.clearLayers();
+  const P=l.points; if(A.n>1) lmap.fitBounds(L.latLngBounds(P.map(p=>[p[1],p[2]])),{padding:[30,30]});
+  L.circleMarker([P[A.road[0]][1],P[A.road[0]][2]],{radius:8,color:'#fff',weight:2,fillColor:ROAD_C,fillOpacity:1}).addTo(gQuiz);
+  const hist=(l.quiz||[]).slice(-5).reverse();
+  box.innerHTML=`<div><h3>Ezber testi</h3><p class="small muted">Rotayı dönüş dönüş sorar. Haritada sadece o ana kadar gittiğin yol görünür; sıradaki dönüşte ne yaptığını seçersin.</p></div>
+    ${A.turns.length?`<button class="btn primary" id="qStart" type="button" style="min-height:56px;font-size:18px">Testi başlat · ${A.turns.length} soru</button>`:'<p class="muted">Bu derste dönüş bulunamadığı için test yapılamıyor.</p>'}
+    ${hist.length?`<div class="card"><b>Son denemeler</b><dl class="kv">${hist.map(q=>`<dt>${fmtDate(q.t)} ${fmtClock(q.t)}</dt><dd>${q.score}/${q.total} · %${Math.round(q.score/q.total*100)}</dd>`).join('')}</dl></div>`:''}`;
+  const b=$('#qStart'); if(b) b.onclick=()=>{ QZ={list:A.turns.slice(),k:0,score:0,wrong:[]}; showQ(); };
+}
+function showQ(){
+  const l=CUR, P=l.points, A=analyze(l), box=$('#p-test'); gQuiz.clearLayers();
+  const t=QZ.list[QZ.k], tc=A.cum[t.i];
+  let a=A.road[0]; while(a<t.i&&A.cum[a]<tc-450) a++;
+  let b=t.i; while(b>a&&A.cum[b]>tc-22) b--;
+  const seg=P.slice(a,b+1).map(p=>[p[1],p[2]]);
+  if(seg.length>1) L.polyline(seg,{color:ROAD_C,weight:7,lineCap:'round'}).addTo(gQuiz);
+  const end=seg[seg.length-1]||[t.lat,t.lon];
+  L.marker(end,{icon:divMk('me','',20)}).addTo(gQuiz);
+  L.circle([t.lat,t.lon],{radius:18,color:'#E0930F',weight:2,dashArray:'4 4',fill:false}).addTo(gQuiz);
+  lmap.setView([t.lat,t.lon],17);
+  const s=l.streets['t'+(QZ.list[QZ.k-1]||{}).i];
+  box.innerHTML=`<div class="row"><b class="grow">Soru ${QZ.k+1} / ${QZ.list.length}</b><span class="chip ok">${QZ.score} doğru</span></div>
+    <div class="qbar"><i style="width:${QZ.k/QZ.list.length*100}%"></i></div>
+    <h3>Turuncu halkaya geldin${s?` (${esc(s)} üzerindesin)`:''}. Burada ne yaptın?</h3>
+    <div class="qopts">${QOPTS.map(([k,tx])=>`<button class="qopt" type="button" data-k="${k}">${ICON[k]}${tx}</button>`).join('')}</div>
+    <div id="qFb"></div>`;
+  box.querySelector('.qopts').onclick=e=>{ const bt=e.target.closest('.qopt'); if(bt&&!QZ.answered) answerQ(bt.dataset.k); };
+  QZ.answered=false;
+}
+function answerQ(k){
+  QZ.answered=true; const l=CUR, P=l.points, A=analyze(l), t=QZ.list[QZ.k]; const ok=k===t.kind;
+  if(ok) QZ.score++; else QZ.wrong.push(QZ.k);
+  $$('.qopt').forEach(b=>{ if(b.dataset.k===t.kind) b.classList.add('right'); else if(b.dataset.k===k) b.classList.add('wrong'); b.disabled=true; });
+  const tc=A.cum[t.i]; let a=t.i; while(a>0&&A.cum[a]>tc-25) a--; let b=t.i; while(b<A.n-1&&A.cum[b]<tc+110) b++;
+  L.polyline(P.slice(a,b+1).map(p=>[p[1],p[2]]),{color:ok?'#2F9E4B':'#D2372E',weight:7,lineCap:'round'}).addTo(gQuiz);
+  const s=l.streets['t'+t.i];
+  $('#qFb').innerHTML=`<div class="feedback ${ok?'ok':'no'}">${ok?'Doğru.':'Yanlış.'} Burada ${turnVerb(t)}${s?`, ${esc(s)} yoluna girdin`:''}.</div>
+    <button class="btn primary" id="qNext" type="button" style="width:100%;margin-top:10px;min-height:52px">${QZ.k+1<QZ.list.length?'Sonraki soru':'Sonucu gör'}</button>`;
+  $('#qNext').onclick=()=>{ QZ.k++; if(QZ.k<QZ.list.length) showQ(); else endQuiz(); };
+}
+function endQuiz(){
+  const l=CUR, box=$('#p-test'), pct=Math.round(QZ.score/QZ.list.length*100);
+  l.quiz.push({t:Date.now(),score:QZ.score,total:QZ.list.length}); dbPut(l);
+  gQuiz.clearLayers(); const A=analyze(l), P=l.points;
+  L.polyline(P.slice(A.road[0],A.road[1]+1).map(p=>[p[1],p[2]]),{color:'#8A97AD',weight:5,opacity:.6}).addTo(gQuiz);
+  A.turns.forEach((t,k)=>{ const w=QZ.wrong.includes(k); L.marker([t.lat,t.lon],{icon:L.divIcon({className:'',html:`<div class="mk" style="width:22px;height:22px;background:${w?'#D2372E':'#2F9E4B'}">${k+1}</div>`,iconSize:[22,22],iconAnchor:[11,11]})}).addTo(gQuiz); });
+  lmap.fitBounds(L.latLngBounds(P.map(p=>[p[1],p[2]])),{padding:[30,30]});
+  box.innerHTML=`<div class="tiles"><div class="tile"><span class="v num">%${pct}</span><span class="l">Başarı</span></div><div class="tile"><span class="v num">${QZ.score}</span><span class="l">Doğru</span></div><div class="tile"><span class="v num">${QZ.list.length-QZ.score}</span><span class="l">Yanlış</span></div></div>
+    <p>${pct===100?'Bu rotayı ezberlemişsin.':pct>=70?'İyi gidiyor. Kırmızı numaralı dönüşlere bir daha bak.':'Kırmızı dönüşleri "İzle" sekmesinde birkaç kez izle, sonra testi tekrarla.'}</p>
+    ${QZ.wrong.length?`<button class="btn" id="qWrong" type="button">Sadece yanlışları tekrar sor (${QZ.wrong.length})</button>`:''}
+    <button class="btn primary" id="qAgain" type="button">Testi baştan çöz</button>`;
+  const w=$('#qWrong'); if(w) w.onclick=()=>{ QZ={list:QZ.wrong.map(k=>A.turns[k]),k:0,score:0,wrong:[]}; showQ(); };
+  $('#qAgain').onclick=()=>{ QZ={list:A.turns.slice(),k:0,score:0,wrong:[]}; showQ(); };
+}
+
+/* ---- istatistik ---- */
+function renderStats(){
+  const l=CUR, A=analyze(l), box=$('#p-stat');
+  if(A.n<2){ box.innerHTML='<p class="muted">Yeterli konum yok.</p>'; return; }
+  const avgMv=A.moving>0?A.distance/A.moving*3.6:0;
+  const fren=A.harsh.filter(h=>h.type==='fren').length, kalk=A.harsh.length-fren;
+  const sag=A.turns.filter(t=>t.kind==='sag').length, sol=A.turns.filter(t=>t.kind==='sol').length, uu=A.turns.filter(t=>t.kind==='u').length;
+  const gapS=(l.gaps||[]).reduce((s,g)=>s+(g[1]-g[0])/1000,0);
+  let html=`<div class="tiles">
+    <div class="tile"><span class="v num">${nf1.format(A.distance/1000)}<small>km</small></span><span class="l">Mesafe</span></div>
+    <div class="tile"><span class="v num">${fmtT(A.dur)}</span><span class="l">Toplam süre</span></div>
+    <div class="tile"><span class="v num">${fmtT(A.moving)}</span><span class="l">Hareket</span></div>
+    <div class="tile"><span class="v num">${Math.round(avgMv)}<small>km/sa</small></span><span class="l">Ort. hız</span></div>
+    <div class="tile"><span class="v num">${Math.round(A.maxS)}<small>km/sa</small></span><span class="l">En yüksek</span></div>
+    <div class="tile"><span class="v num">${A.roadStops.length}</span><span class="l">Duruş</span></div></div>
+  <div class="card"><div class="row"><b class="grow">Hız grafiği</b><span class="small muted">kesikli çizgi: 50 km/sa</span></div><canvas class="chart" id="spdChart"></canvas></div>
+  <div class="card"><b>Sürüş</b><dl class="kv">
+    <dt>Sert fren</dt><dd>${fren}</dd><dt>Sert kalkış</dt><dd>${kalk}</dd>
+    <dt>50 km/sa üstünde</dt><dd>${fmtMin(A.over50)}</dd>
+    <dt>Dönüşler</dt><dd>${sag} sağ · ${sol} sol${uu?` · ${uu} U`:''}</dd>
+    <dt>Duruşlarda toplam bekleme</dt><dd>${fmtMin(A.roadStops.reduce((s,x)=>s+x.dur,0))}</dd>
+    <dt>Ortalama GPS hassasiyeti</dt><dd>±${Math.round(A.accAvg)} m</dd>
+    ${gapS>0?`<dt>Kayıtta boşluk</dt><dd>${fmtMin(gapS)}</dd>`:''}
+  </dl><p class="small muted">Sert fren ve kalkış GPS hızından tahmin edilir; haritada kırmızı ! ile gösterilir. Tek tük olması normal, her derste azalıyorsa ilerliyorsun.</p></div>`;
+  if(A.pk) html+=`<div class="card"><b>Park bölümü</b><dl class="kv">
+    <dt>Süre</dt><dd>${fmtMin(A.pk.dur)}</dd><dt>Gidilen yol</dt><dd>${fmtD(A.pk.dist)}</dd>
+    <dt>Duruş sayısı</dt><dd>${A.pk.stops}</dd><dt>Duruşlarda geçen süre</dt><dd>${fmtMin(A.pk.stopTime)}</dd>
+    <dt>İleri/geri değişimi (tahmini)</dt><dd>${A.pk.reversals}</dd></dl>
+    <p class="small muted">GPS birkaç metre sapar; aracın çizgiye ne kadar yakın durduğunu ölçemez. Buradaki sayılar parkı ne kadar sürede ve kaç manevrayla bitirdiğine dair kabaca bir fikir verir. Derse göre kıyasla: süre ve manevra sayısı düşüyorsa park rahatlıyor demektir.</p></div>`;
+  const all=LESSONS.filter(x=>x.status==='done').slice().sort((a,b)=>a.startedAt-b.startedAt);
+  if(all.length>1) html+=`<div class="card"><b>Gelişimin</b><div class="tablewrap"><table class="prog"><thead><tr><th>Ders</th><th>km</th><th>Fren</th><th>Park</th><th>Test</th></tr></thead><tbody>${all.map(x=>{const B=analyze(x);const f=B.harsh.filter(h=>h.type==='fren').length;const best=(x.quiz||[]).reduce((m,q)=>Math.max(m,Math.round(q.score/q.total*100)),-1);return `<tr class="${x===l?'cur':''}"><td>${esc(x.name)}</td><td>${nf1.format(B.distance/1000)}</td><td>${f}</td><td>${B.pk?fmtT(B.pk.dur):'–'}</td><td>${best>=0?'%'+best:'–'}</td></tr>`;}).join('')}</tbody></table></div></div>`;
+  box.innerHTML=html; requestAnimationFrame(()=>drawSpeedChart(A));
+}
+function drawSpeedChart(A){
+  const c=$('#spdChart'); if(!c) return; const dpr=window.devicePixelRatio||1; const W=c.clientWidth,H=c.clientHeight; c.width=W*dpr; c.height=H*dpr;
+  const x=c.getContext('2d'); x.scale(dpr,dpr); const P=CUR.points;
+  const ink=cssv('--muted'), line=cssv('--line'), acc=cssv('--accent'), warn=cssv('--warn'), park=cssv('--park');
+  const padL=30,padB=20,padT=8,padR=6, w=W-padL-padR, h=H-padT-padB;
+  const ymax=Math.max(40,Math.ceil(A.maxS/10)*10); const T=A.dur||1;
+  const X=i=>padL+(P[i][0]-P[0][0])/1000/T*w, Y=v=>padT+h-v/ymax*h;
+  x.font='11px '+getComputedStyle(document.body).fontFamily; x.fillStyle=ink; x.strokeStyle=line; x.lineWidth=1;
+  for(let v=0;v<=ymax;v+=ymax>60?20:10){ x.beginPath(); x.moveTo(padL,Y(v)); x.lineTo(W-padR,Y(v)); x.stroke(); x.fillText(v,4,Y(v)+4); }
+  const mins=Math.floor(T/60), stepM=mins>40?10:5; for(let m=0;m<=mins;m+=stepM){ const px=padL+m*60/T*w; x.fillText(m+' dk',Math.min(px,W-padR-28),H-4); }
+  if(A.park){ x.fillStyle=park; x.globalAlpha=.12; const a=X(A.park[0]),b=X(A.park[1]); x.fillRect(a,padT,b-a,h); x.globalAlpha=1; }
+  x.beginPath(); x.moveTo(X(0),Y(0)); for(let i=0;i<A.n;i++) x.lineTo(X(i),Y(A.spd[i])); x.lineTo(X(A.n-1),Y(0)); x.closePath(); x.fillStyle=acc; x.globalAlpha=.16; x.fill(); x.globalAlpha=1;
+  x.beginPath(); for(let i=0;i<A.n;i++){ i?x.lineTo(X(i),Y(A.spd[i])):x.moveTo(X(i),Y(A.spd[i])); } x.strokeStyle=acc; x.lineWidth=1.8; x.stroke();
+  if(ymax>=50){ x.setLineDash([5,4]); x.strokeStyle=warn; x.lineWidth=1.2; x.beginPath(); x.moveTo(padL,Y(50)); x.lineTo(W-padR,Y(50)); x.stroke(); x.setLineDash([]); }
+  A.harsh.forEach(hh=>{ x.fillStyle='#D2372E'; x.beginPath(); x.arc(X(hh.i),Y(A.spd[hh.i]),3.5,0,7); x.fill(); });
+}
+
+/* ================= KARŞILAŞTIR ================= */
+let cmap=null, gCmp=null; const CMP_SEL=new Set(); const CMP_COL=['#1E6FD9','#E0930F','#2F9E4B','#7447C9','#0E9AA7','#B8487A'];
+function renderCompare(){
+  const list=LESSONS.filter(l=>l.status==='done'), box=$('#cmpList');
+  if(!list.length){ box.innerHTML='<p class="muted">Karşılaştırmak için önce ders kaydet.</p>'; $('#cmap').hidden=true; $('#cmpResult').innerHTML=''; return; }
+  $('#cmap').hidden=false;
+  if(!CMP_SEL.size) list.slice(0,2).forEach(l=>CMP_SEL.add(l.id));
+  box.innerHTML=list.map((l,k)=>`<div class="cmp-item"><input type="checkbox" id="cs${k}" data-id="${l.id}" ${CMP_SEL.has(l.id)?'checked':''}><span class="sw" style="background:${CMP_COL[k%CMP_COL.length]}"></span><label for="cs${k}">${esc(l.name)}<br><span class="small muted">${fmtDate(l.startedAt)} · ${TYPE_LABEL[l.type]}</span></label><label class="ref"><input type="radio" name="refr" data-id="${l.id}" ${l.ref?'checked':''}>Sınav rotası</label></div>`).join('');
+  box.onchange=e=>{ const id=e.target.dataset.id; if(e.target.type==='checkbox'){ e.target.checked?CMP_SEL.add(id):CMP_SEL.delete(id); } else { LESSONS.forEach(x=>{ const on=x.id===id; if(!!x.ref!==on){x.ref=on;dbPut(x);} }); CMP_SEL.add(id); renderCompare(); return; } drawCompare(list); };
+  if(!cmap){ cmap=mkMap('cmap'); L.control.zoom({position:'bottomright'}).addTo(cmap); gCmp=L.layerGroup().addTo(cmap); }
+  setTimeout(()=>{ cmap.invalidateSize(); drawCompare(list); },50);
+}
+function toXY(lat,lon,lat0){ return [lon*111320*Math.cos(lat0*RAD), lat*110540]; }
+function segDist(p,a,b){ const dx=b[0]-a[0],dy=b[1]-a[1]; const L2=dx*dx+dy*dy; let t=L2?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L2:0; t=Math.max(0,Math.min(1,t)); const x=a[0]+t*dx-p[0],y=a[1]+t*dy-p[1]; return Math.sqrt(x*x+y*y); }
+function drawCompare(list){
+  gCmp.clearLayers(); const res=$('#cmpResult'); const sel=list.filter(l=>CMP_SEL.has(l.id)); const all=[];
+  const ref=list.find(l=>l.ref);
+  sel.forEach(l=>{ const k=list.indexOf(l); const pts=l.points.map(p=>[p[1],p[2]]); all.push(...pts); L.polyline(pts,{color:CMP_COL[k%CMP_COL.length],weight:l===ref?9:5,opacity:l===ref?.45:.9}).addTo(gCmp); });
+  let out='';
+  if(ref&&sel.includes(ref)){
+    const lat0=ref.points[0][1]; const R=resample(ref.points,0,ref.points.length-1,10).map(p=>toXY(p.lat,p.lon,lat0));
+    sel.filter(l=>l!==ref).forEach(l=>{
+      const Q=resample(l.points,0,l.points.length-1,10); let dev=0; let run=[];
+      const flush=()=>{ if(run.length>1) L.polyline(run,{color:'#D2372E',weight:8,opacity:.9}).addTo(gCmp); run=[]; };
+      Q.forEach(q=>{ const p=toXY(q.lat,q.lon,lat0); let md=1e9; for(let k=1;k<R.length;k++){ const d=segDist(p,R[k-1],R[k]); if(d<md){md=d; if(md<5)break;} }
+        if(md>35){ dev++; run.push([q.lat,q.lon]); } else flush(); });
+      flush();
+      const pct=Q.length?Math.round((1-dev/Q.length)*100):0;
+      out+=`<div class="card"><div class="row"><b class="grow">${esc(l.name)}</b><span class="chip ${pct>=90?'ok':pct>=70?'warn':'bad'}">%${pct} aynı rota</span></div><p class="small muted">${dev?`Yaklaşık ${fmtD(dev*10)} boyunca sınav rotasının dışındasın; haritada kırmızı.`:'Sınav rotasından hiç sapmamışsın.'}</p></div>`;
+    });
+    if(sel.length===1) out='<p class="small muted">Sınav rotasıyla kıyaslamak için bir ders daha seç.</p>';
+  } else if(sel.length>1) out='<p class="small muted">Sapmaları görmek için derslerden birini "Sınav rotası" yap. Hocanın gösterdiği sınav güzergâhını sürdüğün dersi seçebilirsin.</p>';
+  res.innerHTML=out;
+  if(all.length) cmap.fitBounds(L.latLngBounds(all),{padding:[24,24]});
+}
+
+/* ================= başlat ================= */
+(async function init(){
+  DB=await openDB(); if(!DB) toast('Tarayıcı depolaması açılamadı; kayıtlar sayfa kapanınca kaybolur. Gizli sekmede olabilirsin.',7000);
+  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  await loadLessons(); secureCheck(); renderResume();
+})();
+})();
+</script>
+</body>
+</html>
