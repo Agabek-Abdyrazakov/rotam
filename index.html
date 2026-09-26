@@ -312,8 +312,8 @@ table.prog tr.cur td{background:var(--accent-soft)}
           <p class="small muted">Dersler bu telefonun tarayıcısında saklanır. Diğer telefona geçirmek ya da yedeklemek için dosyaya aktar, orada içe aktar.</p>
           <div class="row">
             <button class="btn grow" id="btnExport" type="button">Tümünü dışa aktar</button>
-            <label class="btn grow" for="fileImport">İçe aktar (.json / .gpx)</label>
-            <input type="file" id="fileImport" accept=".json,.gpx,application/json,application/gpx+xml,text/xml" hidden>
+            <label class="btn grow" for="fileImport">İçe aktar (.txt / .json / .gpx)</label>
+            <input type="file" id="fileImport" accept=".json,.gpx,.txt,application/json,application/gpx+xml,text/xml,text/plain" hidden>
           </div>
           <button class="btn ghost" id="btnSample" type="button">Örnek ders ekle (denemek için, sanal rota)</button>
         </div>
@@ -709,13 +709,46 @@ function renderList(){
 }
 $('#lessonList').addEventListener('click',e=>{const b=e.target.closest('.lesson'); if(b) openLesson(b.dataset.id);});
 
-function saveFile(name,text,mime){
-  const blob=new Blob([text],{type:mime});
-  try{ const f=new File([blob],name,{type:mime}); if(navigator.canShare&&navigator.canShare({files:[f]})){ navigator.share({files:[f],title:name}).catch(()=>{}); return; } }catch(e){}
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+/* dışa aktarma: paylaş (.txt) → indir → kopyala; hiçbiri sessiz kalmaz */
+function exportSheet(title,name,text){
+  const kb=Math.max(1,Math.round(text.length/1024));
+  const box=$('#sheetBox');
+  box.innerHTML=`<h3>${esc(title)}</h3><p class="small muted">${kb} KB. Hangisi çalışırsa onu kullan. WhatsApp ya da Telegram ile kendine gönderip bilgisayardan açabilirsin.</p>
+    <button class="btn primary" id="xShare" type="button">Paylaş (WhatsApp, Telegram, Drive…)</button>
+    <button class="btn" id="xDown" type="button">Telefona indir</button>
+    <button class="btn" id="xCopy" type="button">Panoya kopyala</button>
+    <p class="small" id="xMsg" role="status"></p>
+    <textarea id="xTxt" readonly hidden style="min-height:120px;font:12px monospace"></textarea>
+    <button class="btn ghost" id="xClose" type="button">Kapat</button>`;
+  $('#sheet').hidden=false;
+  const msg=t=>{ $('#xMsg').textContent=t; };
+  const txtName=name.replace(/\.\w+$/,'')+'.txt';
+  $('#xClose').onclick=closeSheet;
+  $('#xShare').onclick=async()=>{
+    if(!navigator.share){ msg('Bu tarayıcıda paylaşım yok. "Telefona indir" ya da "Panoya kopyala"yı dene.'); return; }
+    const f=new File([text],txtName,{type:'text/plain'});
+    try{
+      if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],title:txtName});
+      else await navigator.share({title:txtName,text});
+      msg('Paylaşım menüsü açıldı.');
+    }catch(e){ if(e&&e.name==='AbortError') msg('Paylaşım iptal edildi.'); else msg('Paylaşım açılamadı ('+(e&&e.name||'hata')+'). "Telefona indir"i dene.'); }
+  };
+  $('#xDown').onclick=()=>{
+    try{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'application/octet-stream'})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);
+      msg(`"${name}" indiriliyor. Dosyalar › İndirilenler klasörüne bak. Bir şey olmadıysa bu tarayıcı indirmeyi engelliyor; Chrome ile açıp tekrar dene.`); }
+    catch(e){ msg('İndirme başlatılamadı. "Panoya kopyala"yı dene.'); }
+  };
+  $('#xCopy').onclick=async()=>{
+    try{ await navigator.clipboard.writeText(text); msg('Kopyalandı. Bir yere yapıştırıp kaydedebilirsin.'); }
+    catch(e){ const t=$('#xTxt'); t.hidden=false; t.value=text; t.focus(); t.select(); msg('Otomatik kopyalanamadı. Kutudaki metin seçildi; uzun basıp "Kopyala" de.'); }
+  };
 }
-$('#btnExport').addEventListener('click',()=>{ const data={app:'direksiyon-rotam',v:1,exportedAt:Date.now(),lessons:LESSONS.map(l=>{const c=Object.assign({},l);delete c._A;return c;})};
-  saveFile(`direksiyon-rotam-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data),'application/json'); });
+function lessonsJSON(list){ return JSON.stringify({app:'direksiyon-rotam',v:1,exportedAt:Date.now(),lessons:list.map(l=>{const c=Object.assign({},l);delete c._A;return c;})}); }
+$('#btnExport').addEventListener('click',()=>{
+  const list=LESSONS.filter(l=>l.status!=='recording'||l.points.length);
+  if(!list.length){ toast('Dışa aktarılacak ders yok.'); return; }
+  exportSheet(`${list.length} dersi dışa aktar`,`direksiyon-rotam-${new Date().toISOString().slice(0,10)}.json`,lessonsJSON(list));
+});
 function toGPX(l){
   const pts=l.points.map(p=>`<trkpt lat="${p[1]}" lon="${p[2]}"><time>${new Date(p[0]).toISOString()}</time></trkpt>`).join('');
   return `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Direksiyon Rotam" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${esc(l.name)}</name><trkseg>${pts}</trkseg></trk></gpx>`;
@@ -873,13 +906,16 @@ $('#btnMore').addEventListener('click',()=>{
   box.innerHTML=`<h3>${esc(l.name)}</h3>
     <div class="seg" id="mType">${['uzun','kisa','serbest'].map(t=>`<button type="button" data-t="${t}" class="${l.type===t?'on':''}"><span>${TYPE_LABEL[t]}</span></button>`).join('')}</div>
     <button class="btn" id="mRef" type="button">${l.ref?'Sınav rotası işaretini kaldır':'Bunu sınav rotası olarak işaretle'}</button>
+    <button class="btn" id="mJson" type="button">Bu dersi dışa aktar</button>
     <button class="btn" id="mGpx" type="button">GPX olarak dışa aktar</button>
     <button class="btn danger" id="mDel" type="button">Dersi sil</button>
     <button class="btn ghost" id="mClose" type="button">Kapat</button>`;
   $('#sheet').hidden=false;
   $('#mType').onclick=e=>{const b=e.target.closest('button'); if(!b)return; l.type=b.dataset.t; l.split=null; dbPut(l); closeSheet(); drawLessonMap(false); setPanel(PANEL); toast(`Tur tipi: ${TYPE_LABEL[l.type]}`);};
   $('#mRef').onclick=()=>{ const on=!l.ref; LESSONS.forEach(x=>{ if(x.ref&&on){x.ref=false;dbPut(x);} }); l.ref=on; dbPut(l); closeSheet(); toast(on?'Sınav rotası olarak işaretlendi. Karşılaştır sekmesinde kullanılır.':'İşaret kaldırıldı.'); };
-  $('#mGpx').onclick=()=>{ saveFile(l.name.replace(/[^\wçğıöşüÇĞİÖŞÜ .-]/g,'_')+'.gpx',toGPX(l),'application/gpx+xml'); closeSheet(); };
+  const safe=l.name.replace(/[^\wçğıöşüÇĞİÖŞÜ .-]/g,'_');
+  $('#mJson').onclick=()=>exportSheet('Bu dersi dışa aktar',safe+'.json',lessonsJSON([l]));
+  $('#mGpx').onclick=()=>exportSheet('GPX olarak dışa aktar',safe+'.gpx',toGPX(l));
   $('#mClose').onclick=closeSheet;
   $('#mDel').onclick=()=>{ const b=$('#mDel'); if(b.dataset.sure){ dbDel(l.id).then(loadLessons).then(()=>{closeSheet();show('list');toast('Ders silindi.');}); } else { b.dataset.sure='1'; b.textContent='Emin misin? Silmek için tekrar dokun'; } };
 });
